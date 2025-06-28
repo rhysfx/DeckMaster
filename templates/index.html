@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DeckMaster - Button Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+  <header class="bg-indigo-700 text-white shadow-md">
+    <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <h1 class="text-3xl font-semibold tracking-wide">DeckMaster</h1>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-6 py-8">
+    <section class="bg-white rounded-lg shadow-lg p-6">
+      <h2 class="text-2xl font-semibold text-gray-800 mb-6 border-b border-gray-200 pb-2">Buttons List</h2>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-auto border-collapse">
+          <thead>
+            <tr class="bg-indigo-50 text-indigo-700 uppercase text-sm font-medium tracking-wider">
+              <th class="border border-gray-200 px-4 py-3 text-left">Label</th>
+              <th class="border border-gray-200 px-4 py-3 text-left">Pos X</th>
+              <th class="border border-gray-200 px-4 py-3 text-left">Pos Y</th>
+              <th class="border border-gray-200 px-4 py-3 text-left">BG Color</th>
+              <th class="border border-gray-200 px-4 py-3 text-left">FG Color</th>
+              <th class="border border-gray-200 px-4 py-3 text-left">Action</th>
+            </tr>
+          </thead>
+          <tbody class="text-gray-700">
+            {% for b in buttons %}
+            <tr class="even:bg-gray-50 hover:bg-indigo-100 transition-colors duration-200">
+              <td class="border border-gray-200 px-4 py-3">{{ b[1] }}</td>
+              <td class="border border-gray-200 px-4 py-3">{{ b[2] }}</td>
+              <td class="border border-gray-200 px-4 py-3">{{ b[3] }}</td>
+              <td class="border border-gray-200 px-4 py-3">
+                <div class="w-12 h-6 rounded" style="background-color: '{{ b[4] }}';"></div>
+              </td>
+              <td class="border border-gray-200 px-4 py-3 font-semibold" style="color: '{{ b[5] }}'">{{ b[5] }}</td>
+              <td class="border border-gray-200 px-4 py-3">{{ b[6] }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>       
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <footer class="max-w-7xl mx-auto px-6 py-4 text-center text-gray-400 text-sm">
+    &copy; 2025 DeckMaster. All rights reserved.
+  </footer>
+</body>
+</html>
