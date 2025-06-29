@@ -2,3 +2,4 @@ aiomysql
 asyncio
 python-dotenv
 tkinterweb
+requests
