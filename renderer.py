@@ -5,11 +5,13 @@ import os
 import tempfile
 import tkinter as tk
 import urllib.request
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 import aiomysql
 import pyautogui
 from dotenv import load_dotenv
+
+from tkinterweb import HtmlFrame
 
 from actions import load_actions, action_handlers
 
@@ -26,6 +28,10 @@ class Config:
     OFFSET_X = 20
     BUTTON_WIDTH = 121
     BUTTON_HEIGHT = 128
+    
+    # Web browser dimensions
+    WEB_HEIGHT = 300  # Height of the web browser area
+    WEB_MARGIN_TOP = 0
     
     # Navigation button positions
     NAV_LEFT_X = 985
@@ -49,6 +55,9 @@ class DeckMasterApp:
         self.created_buttons = []
         self.root = None
         self.arrow_images = None
+        self.web_browser = None
+        self.web_frame = None
+        self.current_page_data = None
         
         # Disable PyAutoGUI failsafe
         pyautogui.FAILSAFE = False
@@ -99,6 +108,65 @@ class DeckMasterApp:
                 print(f"Error executing action {command}: {e}")
         else:
             print(f"No handler for action '{command}'")
+
+    def _setup_web_browser(self) -> None:
+        """Setup the embedded web browser at the top of the interface."""
+        try:
+            # Create frame for web browser
+            self.web_frame = tk.Frame(self.root, height=Config.WEB_HEIGHT, bg=Config.BG_COLOR)
+            self.web_frame.pack(fill=tk.X, padx=10, pady=Config.WEB_MARGIN_TOP)
+            self.web_frame.pack_propagate(False)  # Maintain fixed height
+            
+            # Create the web browser widget
+            self.web_browser = HtmlFrame(self.web_frame)
+            self.web_browser.pack(fill=tk.BOTH, expand=True)
+            
+            # Initially hide the web browser
+            self.web_frame.pack_forget()
+            
+            print("Web browser embedded successfully")
+            
+        except Exception as e:
+            print(f"Error setting up web browser: {e}")
+            self.web_browser = None
+            self.web_frame = None
+
+    def _update_webpage_display(self, page_data: Optional[Dict]) -> None:
+        """
+        Update the webpage display based on page data.
+        
+        Args:
+            page_data: Dictionary containing page configuration
+        """
+        if not self.web_browser or not self.web_frame:
+            return
+            
+        try:
+            if page_data and page_data.get('show_webpage') and page_data.get('webpage_url'):
+                # Show and load webpage
+                if not self.web_frame.winfo_viewable():
+                    self.web_frame.pack(fill=tk.X, padx=10, pady=Config.WEB_MARGIN_TOP, before=None)
+                
+                current_url = getattr(self.web_browser, '_current_url', None)
+                new_url = page_data['webpage_url']
+                
+                # Only load if URL has changed
+                if current_url != new_url:
+                    try:
+                        self.web_browser.load_website(new_url)
+                        self.web_browser._current_url = new_url
+                        print(f"Loaded webpage: {new_url}")
+                    except Exception as e:
+                        print(f"Error loading webpage {new_url}: {e}")
+            else:
+                # Hide webpage
+                if self.web_frame.winfo_viewable():
+                    self.web_frame.pack_forget()
+                    print("Webpage hidden for current page")
+        except tk.TclError as e:
+            print(f"Widget error in webpage display: {e}")
+        except Exception as e:
+            print(f"Unexpected error in webpage display: {e}")
     
     def _create_button_click_handler(self, label: str, action: Optional[str]):
         """Create a button click handler function."""
@@ -192,6 +260,39 @@ class DeckMasterApp:
 
         return button
     
+    async def fetch_page_data(self, page: int = 1) -> Optional[Dict]:
+        """
+        Fetch page configuration from database.
+        
+        Args:
+            page: Page number to fetch
+            
+        Returns:
+            Dictionary with page data or None
+        """
+        try:
+            conn = await aiomysql.connect(
+                host=os.getenv('DB_HOST'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASS'),
+                db=os.getenv('DB_NAME')
+            )
+
+            async with conn.cursor(aiomysql.DictCursor) as cur:
+                await cur.execute("""
+                    SELECT page_number, webpage_url, show_webpage, background_color
+                    FROM pages 
+                    WHERE page_number = %s
+                """, (page,))
+                result = await cur.fetchone()
+
+            conn.close()
+            return result
+
+        except Exception as e:
+            print(f"Database error fetching page data: {e}")
+            return None
+    
     async def fetch_buttons(self, page: int = 1) -> List[Tuple]:
         """
         Fetch button data from database.
@@ -238,6 +339,19 @@ class DeckMasterApp:
         serialized = json.dumps(buttons_data, sort_keys=True)
         return hashlib.md5(serialized.encode('utf-8')).hexdigest()
     
+    def _hash_page_data(self, page_data: Optional[Dict]) -> str:
+        """
+        Generate hash of page data for change detection.
+        
+        Args:
+            page_data: Page data dictionary
+            
+        Returns:
+            MD5 hash string
+        """
+        serialized = json.dumps(page_data or {}, sort_keys=True, default=str)
+        return hashlib.md5(serialized.encode('utf-8')).hexdigest()
+    
     def update_buttons_if_changed(self, buttons_data: List[Tuple]) -> None:
         """
         Update buttons if data has changed.
@@ -263,6 +377,44 @@ class DeckMasterApp:
                 btn = self._create_button_from_data(button_data)
                 if btn:
                     self.created_buttons.append(btn)
+
+    def update_page_if_changed(self, page_data: Optional[Dict]) -> None:
+        """
+        Update page configuration if data has changed.
+        
+        Args:
+            page_data: Page data dictionary
+        """
+        new_hash = self._hash_page_data(page_data)
+        
+        if not hasattr(self.root, 'last_page_hash'):
+            self.root.last_page_hash = None
+        
+        if new_hash != self.root.last_page_hash:
+            self.root.last_page_hash = new_hash
+            self.current_page_data = page_data
+            
+            # Schedule UI updates to happen on main thread
+            self.root.after_idle(self._update_page_ui, page_data)
+    
+    def _update_page_ui(self, page_data: Optional[Dict]) -> None:
+        """
+        Update page UI elements on main thread.
+        
+        Args:
+            page_data: Page data dictionary
+        """
+        try:
+            # Update webpage display
+            self._update_webpage_display(page_data)
+            
+            # Update background color if specified
+            if page_data and page_data.get('background_color'):
+                self.root.configure(bg=page_data['background_color'])
+            else:
+                self.root.configure(bg=Config.BG_COLOR)
+        except Exception as e:
+            print(f"Error updating page UI: {e}")
     
     def _create_button_from_data(self, button_data: Tuple) -> Optional[tk.Button]:
         """
@@ -350,24 +502,46 @@ class DeckMasterApp:
     
     def _asyncio_fetch_and_update(self) -> None:
         """
-        Fetch buttons from database and update UI.
+        Fetch page and button data from database and update UI.
         Called periodically for live updates.
         """
         async def fetch_task():
-            return await self.fetch_buttons(self.current_page)
+            try:
+                page_data = await self.fetch_page_data(self.current_page)
+                buttons_data = await self.fetch_buttons(self.current_page)
+                return page_data, buttons_data
+            except Exception as e:
+                print(f"Error in fetch_task: {e}")
+                return None, []
         
         try:
+            # Check if root window still exists
+            if not self.root or not self.root.winfo_exists():
+                return
+                
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            buttons_data = loop.run_until_complete(fetch_task())
+            page_data, buttons_data = loop.run_until_complete(fetch_task())
             loop.close()
             
-            self.update_buttons_if_changed(buttons_data)
+            # Update page configuration first (scheduled on main thread)
+            if page_data is not None:
+                self.update_page_if_changed(page_data)
+            
+            # Then update buttons
+            if buttons_data:
+                self.update_buttons_if_changed(buttons_data)
+            
         except Exception as e:
             print(f"Error in _asyncio_fetch_and_update: {e}")
         
-        # Schedule next update
-        self.root.after(Config.UPDATE_INTERVAL, self._asyncio_fetch_and_update)
+        # Schedule next update only if window still exists
+        try:
+            if self.root and self.root.winfo_exists():
+                self.root.after(Config.UPDATE_INTERVAL, self._asyncio_fetch_and_update)
+        except tk.TclError:
+            # Window has been destroyed, stop scheduling updates
+            pass
     
     def _setup_keyboard_shortcuts(self) -> None:
         """Setup keyboard shortcuts."""
@@ -381,6 +555,8 @@ class DeckMasterApp:
         self.root.title("DeckMaster Control Panel")
         self.root.attributes('-fullscreen', True)
         self.root.configure(bg=Config.BG_COLOR, cursor="none")
+
+        self._setup_web_browser()
         
         self._setup_keyboard_shortcuts()
         self.add_navigation_buttons()

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jun 29, 2025 at 11:49 AM
+-- Generation Time: Jun 29, 2025 at 12:25 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -67,6 +67,28 @@ INSERT INTO `buttons` (`id`, `label`, `pos_x`, `pos_y`, `color_bg`, `color_fg`, 
 (21, 'E5', 645, 662, '#2d2d30', 'white', NULL, 1, NULL),
 (22, 'E6', 815, 662, '#2d2d30', 'white', NULL, 1, NULL);
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `pages`
+--
+
+CREATE TABLE `pages` (
+  `id` int(11) NOT NULL,
+  `page_number` int(11) NOT NULL,
+  `webpage_url` varchar(500) DEFAULT NULL,
+  `show_webpage` tinyint(1) DEFAULT 0,
+  `background_color` varchar(7) DEFAULT '#1e1e1e'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `pages`
+--
+
+INSERT INTO `pages` (`id`, `page_number`, `webpage_url`, `show_webpage`, `background_color`) VALUES
+(1, 1, NULL, 0, '#1e1e1e'),
+(2, 2, 'https://google.co.uk/', 1, '#1e1e1e');
+
 --
 -- Indexes for dumped tables
 --
@@ -78,6 +100,13 @@ ALTER TABLE `buttons`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `pages`
+--
+ALTER TABLE `pages`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `page_number` (`page_number`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -86,6 +115,12 @@ ALTER TABLE `buttons`
 --
 ALTER TABLE `buttons`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+
+--
+-- AUTO_INCREMENT for table `pages`
+--
+ALTER TABLE `pages`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
