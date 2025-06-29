@@ -1,0 +1,4 @@
+aiomysql
+asyncio
+python-dotenv
+pillow
