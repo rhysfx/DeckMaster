@@ -1,3 +1,3 @@
 # DeckMaster
 
-> A clean and simple control interface
+A clean and simple control interface
