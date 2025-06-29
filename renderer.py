@@ -305,8 +305,8 @@ class DeckMasterApp:
     def add_navigation_buttons(self) -> None:
         """Add navigation buttons to the interface."""
         try:
-            arrow_left = tk.PhotoImage(file="arrow_left.png")
-            arrow_right = tk.PhotoImage(file="arrow_right.png")
+            arrow_left = tk.PhotoImage(file="assets/arrow_left.png")
+            arrow_right = tk.PhotoImage(file="assets/arrow_right.png")
         except Exception as e:
             print(f"Error loading arrow images: {e}")
             return
