@@ -9,7 +9,7 @@ DeckMaster provides a fullscreen interface with configurable buttons that can ex
 ## Features
 
 - **Database-Driven Configuration**: All buttons and pages are stored in a MySQL database for easy management
-- **Embedded Web Browser**: Display web pages directly in the interface using tkinterweb
+- **Embedded Web Browser**: Display web pages directly in the interface using QtWebEngine
 - **Customisable Actions**: Extensible action system for executing commands, scripts, and automations
 - **Multi-Page Support**: Navigate between different pages of buttons with arrow navigation
 - **Live Updates**: Real-time synchronization with database changes (500ms polling)
@@ -165,7 +165,6 @@ Pages can display embedded web content:
 - **dashboard.py**: Management interface for configuring buttons, pages, and actions  
 - **Database Layer**: MySQL database storing all configuration data
 - **Action System**: Pluggable command execution framework
-- **Web Integration**: Embedded browser using tkinterweb (renderer only)
 
 ### System Flow
 
@@ -181,7 +180,7 @@ The application uses two main tables:
 
 ### Action System
 
-Actions follow the format `command:parameter` and are handled by registered functions in the `action_handlers` dictionary.
+Actions follow the format `command:parameter` and are handled by registered functions in the `actions` dictionary.
 
 ### Debugging
 
@@ -194,7 +193,7 @@ The application includes extensive logging. Check console output for:
 ## Acknowledgments
 
 - Built with [tkinter](https://docs.python.org/3/library/tkinter.html) for the GUI
-- Uses [tkinterweb](https://github.com/Andereoo/TkinterWeb) for embedded web browsing
+- Uses [QtWebEngine](https://doc.qt.io/qtforpython-6/overviews/qtwebengine-overview.html) for embedded web pages  
 - Database integration via [aiomysql](https://github.com/aio-libs/aiomysql)
 - Automation capabilities powered by [PyAutoGUI](https://github.com/asweigart/pyautogui)
 
