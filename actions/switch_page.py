@@ -33,7 +33,7 @@ def handle_switch_page(param, app_instance=None):
         app_instance.current_page = target_page
         
         # Trigger immediate UI update
-        app_instance.root.after(0, app_instance._asyncio_fetch_and_update)
+        app_instance._asyncio_fetch_and_update()
         
     except ValueError:
         print(f"[Action:switch_page] Invalid page parameter: '{param}'. Must be a number or 'home'")

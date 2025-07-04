@@ -3,3 +3,5 @@ asyncio
 python-dotenv
 tkinterweb
 requests
+pyautogui
+PySide6
