@@ -1,25 +1,62 @@
 # DeckMaster
-
-A customisable, database-driven control panel application.
-
 DeckMaster provides a fullscreen interface with configurable buttons that can execute various actions, making it perfect for control panels or automation dashboards.
 
 ![image](https://github.com/user-attachments/assets/7cad3c88-6036-4d74-ac16-b5cc4b812bd2)
 
-## Features
+## Table of Contents
 
+- [Showcase](#example-showcase)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+  - [Running the Control Panel](#running-the-control-panel)
+  - [Running the Dashboard](#running-the-dashboard)
+- [Built-in Actions](#built-in-actions)
+- [Built-in Presets](#built-in-presets)
+- [Configuration](#configuration)
+  - [Adding Buttons](#adding-buttons)
+  - [Configuring Pages](#configuring-pages)
+  - [Creating Custom Actions](#creating-custom-actions)
+  - [Button Layout](#button-layout)
+  - [Color Scheme](#color-scheme)
+  - [Web Browser Integration](#web-browser-integration)
+- [Architecture](#architecture)
+  - [Core Components](#core-components)
+  - [System Flow](#system-flow)
+  - [Database Schema](#database-schema)
+  - [Action System](#action-system)
+- [Debugging](#debugging)
+- [Acknowledgments](#acknowledgments)
+
+## Example Showcase
+
+These are some examples of control panels I’ve spun up using DeckMaster. 
+
+Each layout demonstrates how customizable the interface is.
+
+### 🎮 Windows Control Panel
+
+<img src="https://github.com/user-attachments/assets/9ba7dc48-21cf-4627-bc87-91679b56fa9d" width="700" />
+
+### 💡Lights Control
+<img src="https://github.com/user-attachments/assets/c41e281b-b18b-4d59-a231-f33690d15fbe" width="700" />
+
+## Features
 - **Database-Driven Configuration**: All buttons and pages are stored in a MySQL database for easy management
 - **Embedded Web Browser**: Display web pages directly in the interface using QtWebEngine
+- **Built-in Actions**: Comprehensive library of pre-built actions for common automation tasks
 - **Customisable Actions**: Extensible action system for executing commands, scripts, and automations
 - **Multi-Page Support**: Navigate between different pages of buttons with arrow navigation
-- **Live Updates**: Real-time synchronization with database changes (500ms polling)
+- **Live Updates**: Real-time synchronisation with database changes (500ms polling)
 - **Fullscreen Interface**: Clean, distraction-free fullscreen experience
 - **Image Support**: Buttons can display custom images from local files or URLs
 - **Responsive Design**: Configurable layout with consistent button positioning
+- **Device Templates**: Pre-configured database templates for popular devices and use cases
 
 ## Prerequisites
 
-- Python 3.7+
+- Python 3.10+
 - MySQL database server
 - Required Python packages (see `requirements.txt`)
 
@@ -75,7 +112,7 @@ DeckMaster provides a fullscreen interface with configurable buttons that can ex
    );
    ```
 
-## Usage
+## Quick Start
 
 ### Running the Control Panel
 
@@ -98,6 +135,20 @@ python dashboard.py
 ```
 
 The dashboard provides a web interface for managing your control panel configuration.
+
+## Built-in Actions
+
+DeckMaster comes with a library of pre-built actions that cover common automation and control tasks. These actions are ready to use out of the box and can be referenced in your button configurations.
+
+For a complete list of available actions and their parameters, refer to the `actions/` directory in the project.
+
+## Built-in Presets
+
+DeckMaster includes pre-configured database presets for popular devices and use cases. These templates provide ready-to-use button layouts and actions that you can import directly into your database.
+
+For a complete list of available presets, refer to the `presets/` directory in the project.
+
+## Configuration
 
 ### Adding Buttons
 
@@ -133,8 +184,6 @@ def my_custom_action(param):
 ```sql
 UPDATE buttons SET action = 'my_command:some_parameter' WHERE id = 1;
 ```
-
-## Configuration
 
 ### Button Layout
 
