@@ -2,3 +2,4 @@ aiomysql
 python-dotenv
 pyautogui
 PySide6
+requests
