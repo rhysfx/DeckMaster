@@ -2,4 +2,3 @@ aiomysql
 python-dotenv
 pyautogui
 PySide6
-PySide6-WebEngine
