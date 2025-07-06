@@ -245,7 +245,6 @@ The application includes extensive logging. Check console output for:
 - Uses [QtWebEngine](https://doc.qt.io/qtforpython-6/overviews/qtwebengine-overview.html) for embedded web pages  
 - Database integration via [aiomysql](https://github.com/aio-libs/aiomysql)
 - Automation capabilities powered by [PyAutoGUI](https://github.com/asweigart/pyautogui)
-
 ---
 
 **DeckMaster** - *A clean and simple control interface*
