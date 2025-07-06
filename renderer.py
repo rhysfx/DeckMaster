@@ -152,9 +152,9 @@ class DeckMasterApp(QMainWindow):
             self.web_container = QWidget(self.central_widget)
             self.web_container.setFixedHeight(Config.WEB_HEIGHT)
             self.web_container.setStyleSheet(f"background-color: {Config.BG_COLOR};")
-            width = self.width()  # Initial full width
-            self.web_container.setGeometry(0, 0, width, Config.WEB_HEIGHT)  # Position at top
-            self.web_container.lower()  # Ensure it stays at the bottom of the z-order
+            width = self.width()
+            self.web_container.setGeometry(0, 0, width, Config.WEB_HEIGHT)
+            self.web_container.lower()
             
             # Create web browser
             self.web_browser = QWebEngineView(self.web_container)
@@ -185,7 +185,7 @@ class DeckMasterApp(QMainWindow):
                 # Show and load webpage
                 if not self.web_container.isVisible():
                     self.web_container.show()
-                    self.web_container.raise_()  # Bring to front when shown
+                    self.web_container.raise_()
                 
                 current_url = self.web_browser.url().toString()
                 new_url = page_data['webpage_url']
