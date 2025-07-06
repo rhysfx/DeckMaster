@@ -1,6 +1,5 @@
 aiomysql
-asyncio
 python-dotenv
-requests
 pyautogui
 PySide6
+PySide6-WebEngine
