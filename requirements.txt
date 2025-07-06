@@ -3,3 +3,4 @@ asyncio
 python-dotenv
 requests
 pyautogui
+PySide6
