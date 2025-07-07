@@ -83,34 +83,32 @@ class DeckMasterApp(QMainWindow):
     
     def execute_action(self, action: str) -> None:
         """
-        Execute an action command.
-        
-        Args:
-            action: Action string in format 'command:parameter'
+        Execute one or multiple action commands separated by '&&'.
         """
         if not action:
             print("No action defined")
             return
 
-        if ':' not in action:
-            print(f"Invalid action format: {action}")
-            return
+        actions = [a.strip() for a in action.split('&&') if a.strip()]
+        for act in actions:
+            if ':' not in act:
+                print(f"Invalid action format: {act}")
+                continue
 
-        command, param = action.split(':', 1)
-        handler = action_handlers.get(command)
-
-        if handler:
-            try:
-                import inspect
-                sig = inspect.signature(handler)
-                if len(sig.parameters) > 1:
-                    handler(param, self)
-                else:
-                    handler(param)
-            except Exception as e:
-                print(f"Error executing action {command}: {e}")
-        else:
-            print(f"No handler for action '{command}'")
+            command, param = act.split(':', 1)
+            handler = action_handlers.get(command)
+            if handler:
+                try:
+                    import inspect
+                    sig = inspect.signature(handler)
+                    if len(sig.parameters) > 1:
+                        handler(param, self)
+                    else:
+                        handler(param)
+                except Exception as e:
+                    print(f"Error executing action {command}: {e}")
+            else:
+                print(f"No handler for action '{command}'")
 
     def _setup_ui(self) -> None:
         """Setup the main UI."""
