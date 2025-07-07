@@ -16,41 +16,37 @@ from PySide6.QtCore import Qt, QTimer, QUrl
 
 from actions import load_actions, action_handlers
 
-# Configuration Constants
-class Config:
-    """Application configuration constants."""
-    # UI styling
-    BG_COLOR = "#1e1e1e"
-    BUTTON_ACTIVE_BG = "#007acc"
-    NAV_BUTTON_BG = "#2d2d30"
-    
-    # Layout constants
-    OFFSET_BUTTON_V = 7
-    OFFSET_X = 20
-    BUTTON_WIDTH = 121
-    BUTTON_HEIGHT = 128
-    
-    # Web browser dimensions
-    WEB_HEIGHT = 300
-    WEB_MARGIN_TOP = 0
-    
-    # Navigation button positions
-    NAV_LEFT_X = 985
-    NAV_RIGHT_X = 1153
-    NAV_Y = 662
-    
-    # Update interval (milliseconds)
-    UPDATE_INTERVAL = 500
-    
-    # PyAutoGUI cursor position after button click
-    CURSOR_PARK_X = 1900
-    CURSOR_PARK_Y = 1060
+# Load environment variables
+load_dotenv()
+
+async def load_settings():
+    conn = await aiomysql.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASS'),
+        db=os.getenv('DB_NAME')
+    )
+    async with conn.cursor() as cur:
+        await cur.execute("SELECT `key`, `value` FROM settings")
+        rows = await cur.fetchall()
+        settings = {k: v for k, v in rows}
+    conn.close()
+    return settings
+
+def settings_get(settings, key, fallback):
+    # Try to convert to int if fallback is int, else return as string
+    val = settings.get(key, fallback)
+    if isinstance(fallback, int):
+        try:
+            return int(val)
+        except Exception:
+            return fallback
+    return val
 
 class DeckMasterApp(QMainWindow):
     """Main application class for DeckMaster Control Panel."""
-    
+
     def __init__(self):
-        """Initialize the application."""
         super().__init__()
         self.current_page = 1
         self.created_buttons = []
@@ -59,32 +55,25 @@ class DeckMasterApp(QMainWindow):
         self.current_page_data = None
         self.last_buttons_hash = None
         self.last_page_hash = None
-        
+        self.settings = asyncio.run(load_settings())  # Synchronously load settings at startup
+
         # Disable PyAutoGUI failsafe
         pyautogui.FAILSAFE = False
-        
-        # Load environment variables
-        load_dotenv()
-        
+
         # Load action handlers
         self._load_action_handlers()
-        
         # Setup UI
         self._setup_ui()
-    
+
     def _load_action_handlers(self) -> None:
-        """Load action handlers from actions module."""
         try:
             load_actions()
             print("Actions loaded successfully")
             print(f"Available action handlers: {list(action_handlers.keys())}")
         except Exception as e:
             print(f"Error loading actions: {e}")
-    
+
     def execute_action(self, action: str) -> None:
-        """
-        Execute one or multiple action commands separated by '&&'.
-        """
         if not action:
             print("No action defined")
             return
@@ -94,7 +83,6 @@ class DeckMasterApp(QMainWindow):
             if ':' not in act:
                 print(f"Invalid action format: {act}")
                 continue
-
             command, param = act.split(':', 1)
             handler = action_handlers.get(command)
             if handler:
@@ -111,84 +99,64 @@ class DeckMasterApp(QMainWindow):
                 print(f"No handler for action '{command}'")
 
     def _setup_ui(self) -> None:
-        """Setup the main UI."""
         self.setWindowTitle("DeckMaster Control Panel")
         self.showFullScreen()
-        self.setStyleSheet(f"QMainWindow {{ background-color: {Config.BG_COLOR}; }}")
+        self.setStyleSheet(
+            f"QMainWindow {{ background-color: {settings_get(self.settings, 'BG_COLOR', '#1e1e1e')}; }}"
+        )
         self.setCursor(QCursor(Qt.BlankCursor))  # Hide cursor
-        
-        # Central widget for absolute positioning
+
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-        
-        # Setup web browser
+
         self._setup_web_browser()
-        
-        # Setup keyboard shortcuts
         self._setup_keyboard_shortcuts()
-        
-        # Add navigation buttons
         self.add_navigation_buttons()
-        
-        # Start update timer
+
         self.timer = QTimer()
         self.timer.timeout.connect(self._asyncio_fetch_and_update)
-        self.timer.start(Config.UPDATE_INTERVAL)
+        self.timer.start(settings_get(self.settings, 'UPDATE_INTERVAL', 500))
 
     def resizeEvent(self, event):
-        """Handle window resize to adjust web browser width and position."""
         if self.web_container and self.web_browser:
-            width = self.width()  # Full width
-            self.web_container.setGeometry(0, 0, width, Config.WEB_HEIGHT)  # Top-left corner
-            self.web_browser.setGeometry(0, 0, width, Config.WEB_HEIGHT)
+            width = self.width()
+            self.web_container.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
+            self.web_browser.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
         super().resizeEvent(event)
 
     def _setup_web_browser(self) -> None:
-        """Setup the embedded web browser at the top of the interface."""
         try:
-            # Create container for web browser
             self.web_container = QWidget(self.central_widget)
-            self.web_container.setFixedHeight(Config.WEB_HEIGHT)
-            self.web_container.setStyleSheet(f"background-color: {Config.BG_COLOR};")
+            web_height = settings_get(self.settings, 'WEB_HEIGHT', 300)
+            self.web_container.setFixedHeight(web_height)
+            self.web_container.setStyleSheet(
+                f"background-color: {settings_get(self.settings, 'BG_COLOR', '#1e1e1e')};"
+            )
             width = self.width()
-            self.web_container.setGeometry(0, 0, width, Config.WEB_HEIGHT)
+            self.web_container.setGeometry(0, 0, width, web_height)
             self.web_container.lower()
-            
-            # Create web browser
+
             self.web_browser = QWebEngineView(self.web_container)
-            self.web_browser.setGeometry(0, 0, width, Config.WEB_HEIGHT)
-            
-            # Initially hide web browser
+            self.web_browser.setGeometry(0, 0, width, web_height)
+
             self.web_container.hide()
-            
             print("Web browser embedded successfully")
-            
         except Exception as e:
             print(f"Error setting up web browser: {e}")
             self.web_browser = None
             self.web_container = None
 
     def _update_webpage_display(self, page_data: Optional[Dict]) -> None:
-        """
-        Update the webpage display based on page data.
-        
-        Args:
-            page_data: Dictionary containing page configuration
-        """
         if not self.web_browser or not self.web_container:
             return
-            
         try:
             if page_data and page_data.get('show_webpage') and page_data.get('webpage_url'):
-                # Show and load webpage
                 if not self.web_container.isVisible():
                     self.web_container.show()
                     self.web_container.raise_()
-                
+
                 current_url = self.web_browser.url().toString()
                 new_url = page_data['webpage_url']
-                
-                # Only load if URL has changed
                 if current_url != new_url:
                     try:
                         self.web_browser.setUrl(QUrl(new_url))
@@ -196,118 +164,81 @@ class DeckMasterApp(QMainWindow):
                     except Exception as e:
                         print(f"Error loading webpage {new_url}: {e}")
             else:
-                # Hide webpage
                 if self.web_container.isVisible():
                     self.web_container.hide()
                     print("Webpage hidden for current page")
         except Exception as e:
             print(f"Error in webpage display: {e}")
-    
+
     def _create_button_click_handler(self, label: str, action: Optional[str]):
-        """Create a button click handler function."""
         def on_button_click():
             if action:
                 print(f"Executing action for button '{label}': {action}")
                 self.execute_action(action)
             else:
                 print(f"Button '{label}' clicked but no action defined")
-            
-            # Park cursor in corner
-            pyautogui.moveTo(Config.CURSOR_PARK_X, Config.CURSOR_PARK_Y)
-        
+            pyautogui.moveTo(
+                settings_get(self.settings, 'CURSOR_PARK_X', 1900),
+                settings_get(self.settings, 'CURSOR_PARK_Y', 1060)
+            )
         return on_button_click
-    
+
     def _load_image(self, image_path: str) -> Optional[QPixmap]:
-        """
-        Load an image from local file or URL.
-        
-        Args:
-            image_path: Path to local file or URL
-            
-        Returns:
-            QPixmap object or None if loading failed
-        """
         if not image_path:
             return None
-            
         try:
             if image_path.startswith(("http://", "https://")):
                 tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
                 urllib.request.urlretrieve(image_path, tmp_file.name)
                 pixmap = QPixmap(tmp_file.name)
-                os.unlink(tmp_file.name)  # Clean up temporary file
+                os.unlink(tmp_file.name)
                 return pixmap
             elif os.path.isfile(image_path):
                 return QPixmap(image_path)
         except Exception as e:
             print(f"Failed to load image '{image_path}': {e}")
-        
         return None
-    
+
     def create_button(self, label: str, x: int, y: int, bg: str, fg: str, 
                      action: Optional[str] = None, image_path: Optional[str] = None) -> QPushButton:
-        """
-        Create a button widget.
-        
-        Args:
-            label: Button text label
-            x, y: Button position
-            bg, fg: Background and foreground colors
-            action: Action to execute on click
-            image_path: Path to button image
-            
-        Returns:
-            Created button widget
-        """
         button = QPushButton(self.central_widget)
         click_handler = self._create_button_click_handler(label, action)
         button.clicked.connect(click_handler)
-        
+
         pixmap = self._load_image(image_path)
+        button_width = settings_get(self.settings, 'BUTTON_WIDTH', 121)
+        button_height = settings_get(self.settings, 'BUTTON_HEIGHT', 128)
+        offset_x = settings_get(self.settings, 'OFFSET_X', 20)
+        offset_v = settings_get(self.settings, 'OFFSET_BUTTON_V', 7)
+        btn_active_bg = settings_get(self.settings, 'BUTTON_ACTIVE_BG', '#007acc')
+
         if pixmap:
             button.setIcon(pixmap)
-            button.setIconSize(pixmap.size().scaled(Config.BUTTON_WIDTH, Config.BUTTON_HEIGHT, Qt.KeepAspectRatio))
+            button.setIconSize(pixmap.size().scaled(button_width, button_height, Qt.KeepAspectRatio))
             button.setStyleSheet(
-                f"QPushButton {{"
-                f"background-color: {bg};"
-                f"border: 2px solid {fg};"
-                f"border-radius: 4px;"
-                f"}}"
-                f"QPushButton:pressed {{"
-                f"background-color: {Config.BUTTON_ACTIVE_BG};"
-                f"}}"
+                f"QPushButton {{ background-color: {bg}; border: 2px solid {fg}; border-radius: 4px; }}"
+                f"QPushButton:pressed {{ background-color: {btn_active_bg}; }}"
             )
         else:
             button.setText(label)
             button.setStyleSheet(
-                f"QPushButton {{"
-                f"background-color: {bg};"
-                f"color: {fg};"
-                f"font: bold 10px Arial;"
-                f"border: 2px solid {fg};"
-                f"border-radius: 4px;"
-                f"}}"
-                f"QPushButton:pressed {{"
-                f"background-color: {Config.BUTTON_ACTIVE_BG};"
-                f"}}"
+                f"QPushButton {{ background-color: {bg}; color: {fg}; font: bold 10px Arial; border: 2px solid {fg}; border-radius: 4px; }}"
+                f"QPushButton:pressed {{ background-color: {btn_active_bg}; }}"
             )
 
         button.setGeometry(
-            x + Config.OFFSET_X,
-            y + Config.OFFSET_BUTTON_V,
-            Config.BUTTON_WIDTH,
-            Config.BUTTON_HEIGHT
+            x + offset_x,
+            y + offset_v,
+            button_width,
+            button_height
         )
-
         return button
     
     async def fetch_page_data(self, page: int = 1) -> Optional[Dict]:
         """
         Fetch page configuration from database.
-        
         Args:
             page: Page number to fetch
-            
         Returns:
             Dictionary with page data or None
         """
@@ -337,10 +268,8 @@ class DeckMasterApp(QMainWindow):
     async def fetch_buttons(self, page: int = 1) -> List[Tuple]:
         """
         Fetch button data from database.
-        
         Args:
             page: Page number to fetch
-            
         Returns:
             List of button data tuples
         """
@@ -370,10 +299,8 @@ class DeckMasterApp(QMainWindow):
     def _hash_buttons_data(self, buttons_data: List[Tuple]) -> str:
         """
         Generate hash of button data for change detection.
-        
         Args:
             buttons_data: List of button data tuples
-            
         Returns:
             MD5 hash string
         """
@@ -383,10 +310,8 @@ class DeckMasterApp(QMainWindow):
     def _hash_page_data(self, page_data: Optional[Dict]) -> str:
         """
         Generate hash of page data for change detection.
-        
         Args:
             page_data: Page data dictionary
-            
         Returns:
             MD5 hash string
         """
@@ -396,7 +321,6 @@ class DeckMasterApp(QMainWindow):
     def update_buttons_if_changed(self, buttons_data: List[Tuple]) -> None:
         """
         Update buttons if data has changed.
-        
         Args:
             buttons_data: List of button data tuples
         """
@@ -420,7 +344,6 @@ class DeckMasterApp(QMainWindow):
     def update_page_if_changed(self, page_data: Optional[Dict]) -> None:
         """
         Update page configuration if data has changed.
-        
         Args:
             page_data: Page data dictionary
         """
@@ -434,7 +357,6 @@ class DeckMasterApp(QMainWindow):
     def _update_page_ui(self, page_data: Optional[Dict]) -> None:
         """
         Update page UI elements.
-        
         Args:
             page_data: Page data dictionary
         """
@@ -446,17 +368,15 @@ class DeckMasterApp(QMainWindow):
             if page_data and page_data.get('background_color'):
                 self.setStyleSheet(f"QMainWindow {{ background-color: {page_data['background_color']}; }}")
             else:
-                self.setStyleSheet(f"QMainWindow {{ background-color: {Config.BG_COLOR}; }}")
+                self.setStyleSheet(f"QMainWindow {{ background-color: {self.settings.get('BG_COLOR', '#1e1e1e')}; }}")
         except Exception as e:
             print(f"Error updating page UI: {e}")
     
     def _create_button_from_data(self, button_data: Tuple) -> Optional[QPushButton]:
         """
         Create button from database row data.
-        
         Args:
             button_data: Tuple containing button data
-            
         Returns:
             Created button or None
         """
@@ -478,13 +398,19 @@ class DeckMasterApp(QMainWindow):
         def next_page():
             self.current_page += 1
             self._asyncio_fetch_and_update()
-            pyautogui.moveTo(Config.CURSOR_PARK_X, Config.CURSOR_PARK_Y)
+            pyautogui.moveTo(
+                int(self.settings.get('CURSOR_PARK_X', 1900)),
+                int(self.settings.get('CURSOR_PARK_Y', 1060))
+            )
         
         def previous_page():
             if self.current_page > 1:
                 self.current_page -= 1
                 self._asyncio_fetch_and_update()
-                pyautogui.moveTo(Config.CURSOR_PARK_X, Config.CURSOR_PARK_Y)
+                pyautogui.moveTo(
+                    int(self.settings.get('CURSOR_PARK_X', 1900)),
+                    int(self.settings.get('CURSOR_PARK_Y', 1060))
+                )
         
         return previous_page, next_page
     
@@ -502,20 +428,26 @@ class DeckMasterApp(QMainWindow):
         # Left arrow button
         left_button = QPushButton(self.central_widget)
         left_button.setIcon(arrow_left)
-        left_button.setIconSize(arrow_left.size().scaled(Config.BUTTON_WIDTH, Config.BUTTON_HEIGHT, Qt.KeepAspectRatio))
+        left_button.setIconSize(
+            arrow_left.size().scaled(
+                int(self.settings.get('BUTTON_WIDTH', 121)), 
+                int(self.settings.get('BUTTON_HEIGHT', 128)), 
+                Qt.KeepAspectRatio
+            )
+        )
         left_button.setGeometry(
-            Config.NAV_LEFT_X + Config.OFFSET_X,
-            Config.NAV_Y + Config.OFFSET_BUTTON_V,
-            Config.BUTTON_WIDTH,
-            Config.BUTTON_HEIGHT
+            int(self.settings.get('NAV_LEFT_X', 985)) + int(self.settings.get('OFFSET_X', 20)),
+            int(self.settings.get('NAV_Y', 662)) + int(self.settings.get('OFFSET_BUTTON_V', 7)),
+            int(self.settings.get('BUTTON_WIDTH', 121)),
+            int(self.settings.get('BUTTON_HEIGHT', 128))
         )
         left_button.setStyleSheet(
             f"QPushButton {{"
-            f"background-color: {Config.NAV_BUTTON_BG};"
+            f"background-color: {self.settings.get('NAV_BUTTON_BG', '#2d2d30')};"
             f"border: none;"
             f"}}"
             f"QPushButton:pressed {{"
-            f"background-color: {Config.BUTTON_ACTIVE_BG};"
+            f"background-color: {self.settings.get('BUTTON_ACTIVE_BG', '#007acc')};"
             f"}}"
         )
         left_button.clicked.connect(previous_page)
@@ -524,20 +456,26 @@ class DeckMasterApp(QMainWindow):
         # Right arrow button
         right_button = QPushButton(self.central_widget)
         right_button.setIcon(arrow_right)
-        right_button.setIconSize(arrow_right.size().scaled(Config.BUTTON_WIDTH, Config.BUTTON_HEIGHT, Qt.KeepAspectRatio))
+        right_button.setIconSize(
+            arrow_right.size().scaled(
+                int(self.settings.get('BUTTON_WIDTH', 121)), 
+                int(self.settings.get('BUTTON_HEIGHT', 128)), 
+                Qt.KeepAspectRatio
+            )
+        )
         right_button.setGeometry(
-            Config.NAV_RIGHT_X + Config.OFFSET_X,
-            Config.NAV_Y + Config.OFFSET_BUTTON_V,
-            Config.BUTTON_WIDTH,
-            Config.BUTTON_HEIGHT
+            int(self.settings.get('NAV_RIGHT_X', 1153)) + int(self.settings.get('OFFSET_X', 20)),
+            int(self.settings.get('NAV_Y', 662)) + int(self.settings.get('OFFSET_BUTTON_V', 7)),
+            int(self.settings.get('BUTTON_WIDTH', 121)),
+            int(self.settings.get('BUTTON_HEIGHT', 128))
         )
         right_button.setStyleSheet(
             f"QPushButton {{"
-            f"background-color: {Config.NAV_BUTTON_BG};"
+            f"background-color: {self.settings.get('NAV_BUTTON_BG', '#2d2d30')};"
             f"border: none;"
             f"}}"
             f"QPushButton:pressed {{"
-            f"background-color: {Config.BUTTON_ACTIVE_BG};"
+            f"background-color: {self.settings.get('BUTTON_ACTIVE_BG', '#007acc')};"
             f"}}"
         )
         right_button.clicked.connect(next_page)
