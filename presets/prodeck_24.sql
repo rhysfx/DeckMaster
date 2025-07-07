@@ -75,12 +75,38 @@ INSERT INTO `pages` (`id`, `page_number`, `webpage_url`, `show_webpage`, `backgr
 (1, 1, NULL, 0, '#1e1e1e'),
 (2, 2, 'https://google.co.uk/', 1, '#1e1e1e');
 
+CREATE TABLE `settings` (
+  `key` varchar(255) NOT NULL,
+  `value` text NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `settings` (`key`, `value`) VALUES
+('BG_COLOR', '#1e1e1e'),
+('BUTTON_ACTIVE_BG', '#007acc'),
+('BUTTON_HEIGHT', '128'),
+('BUTTON_WIDTH', '121'),
+('CURSOR_PARK_X', '1900'),
+('CURSOR_PARK_Y', '1060'),
+('NAV_BUTTON_BG', '#2d2d30'),
+('NAV_LEFT_X', '985'),
+('NAV_RIGHT_X', '1153'),
+('NAV_Y', '662'),
+('OFFSET_BUTTON_V', '7'),
+('OFFSET_X', '20'),
+('UPDATE_INTERVAL', '500'),
+('WEB_HEIGHT', '300'),
+('WEB_MARGIN_TOP', '0');
+
 ALTER TABLE `buttons`
   ADD PRIMARY KEY (`id`);
 
 ALTER TABLE `pages`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `page_number` (`page_number`);
+
+ALTER TABLE `settings`
+  ADD PRIMARY KEY (`key`);
+COMMIT;
 
 ALTER TABLE `buttons`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
