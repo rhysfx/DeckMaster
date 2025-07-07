@@ -56,7 +56,7 @@ Each layout demonstrates how customizable the interface is.
 
 ## Prerequisites
 
-- Python 3.10+
+- Python 3.13+
 - MySQL database server
 - Required Python packages (see `requirements.txt`)
 
@@ -90,26 +90,41 @@ Each layout demonstrates how customizable the interface is.
    CREATE DATABASE deckmaster;
    USE deckmaster;
 
-   CREATE TABLE pages (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       page_number INT NOT NULL UNIQUE,
-       webpage_url VARCHAR(500),
-       show_webpage BOOLEAN DEFAULT FALSE,
-       background_color VARCHAR(7) DEFAULT '#1e1e1e'
-   );
+    CREATE TABLE `pages` (
+      `id` int(11) NOT NULL,
+      `page_number` int(11) NOT NULL,
+      `webpage_url` varchar(500) DEFAULT NULL,
+      `show_webpage` tinyint(1) DEFAULT 0,
+      `background_color` varchar(7) DEFAULT '#1e1e1e'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-   CREATE TABLE buttons (
-       id INT AUTO_INCREMENT PRIMARY KEY,
-       page INT NOT NULL,
-       label VARCHAR(100) NOT NULL,
-       pos_x INT NOT NULL,
-       pos_y INT NOT NULL,
-       color_bg VARCHAR(7) DEFAULT '#2d2d30',
-       color_fg VARCHAR(7) DEFAULT '#ffffff',
-       action VARCHAR(200),
-       image_path VARCHAR(500),
-       INDEX idx_page (page)
-   );
+    CREATE TABLE `buttons` (
+      `id` int(11) NOT NULL,
+      `label` varchar(50) NOT NULL,
+      `pos_x` int(11) NOT NULL,
+      `pos_y` int(11) NOT NULL,
+      `color_bg` varchar(7) DEFAULT '#2d2d30',
+      `color_fg` varchar(7) DEFAULT 'white',
+      `action` varchar(255) DEFAULT NULL,
+      `page` varchar(255) DEFAULT '1',
+      `image_path` varchar(255) DEFAULT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+   CREATE TABLE `settings` (
+      `key` varchar(255) NOT NULL,
+      `value` text NOT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+   
+   ALTER TABLE `pages`
+    ADD PRIMARY KEY (`id`),
+    ADD UNIQUE KEY `page_number` (`page_number`);
+
+   ALTER TABLE `buttons`
+    ADD PRIMARY KEY (`id`);
+
+   ALTER TABLE `settings`
+    ADD PRIMARY KEY (`key`);
    ```
 
 ## Quick Start
@@ -134,7 +149,7 @@ Start the management dashboard to configure buttons and pages:
 python dashboard.py
 ```
 
-The dashboard provides a web interface for managing your control panel configuration.
+The dashboard provides a web interface for managing your control panel configuration - currently in works.
 
 ## Built-in Actions
 
@@ -182,19 +197,19 @@ def my_custom_action(param):
 
 2. Use the action in your button configuration:
 ```sql
-UPDATE buttons SET action = 'my_command:some_parameter' WHERE id = 1;
+UPDATE buttons SET action = 'my_custom_action:some_parameter' WHERE id = 1;
 ```
 
 ### Button Layout
 
 The interface uses a grid-based layout system:
 - **Button Size**: 121x128 pixels
-- **Spacing**: Configurable via `OFFSET_X` and `OFFSET_BUTTON_V`
+- **Spacing**: Configurable via `OFFSET_X` and `OFFSET_BUTTON_V` within settings table of database
 - **Position**: Absolute positioning using `pos_x` and `pos_y` in database
 
 ### Color Scheme
 
-Default colors can be customized in the `Config` class:
+Default colors can be customized in the settings table of the database.
 - **Background**: `#1e1e1e` (dark gray)
 - **Button Active**: `#007acc` (blue)
 - **Navigation Buttons**: `#2d2d30` (slightly lighter gray)
@@ -226,6 +241,7 @@ Pages can display embedded web content:
 The application uses two main tables:
 - `pages`: Page-level configuration (background, web content)
 - `buttons`: Individual button definitions with actions
+- `settings`: Defines system-wide configuration options
 
 ### Action System
 
@@ -238,6 +254,8 @@ The application includes extensive logging. Check console output for:
 - Action execution errors
 - Image loading problems
 - Web browser integration issues
+
+On-screen errors *may* also be displayed within the renderer.
 
 ## Acknowledgments
 
