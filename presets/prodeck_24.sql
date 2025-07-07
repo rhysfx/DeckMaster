@@ -43,7 +43,6 @@ INSERT INTO `buttons` (`id`, `label`, `pos_x`, `pos_y`, `color_bg`, `color_fg`, 
 (21, 'E5', 645, 662, '#2d2d30', 'white', NULL, '1,2', NULL),
 (22, 'E6', 815, 662, '#2d2d30', 'white', NULL, '1,2', NULL);
 
-
 CREATE TABLE `pages` (
   `id` int(11) NOT NULL,
   `page_number` int(11) NOT NULL,
