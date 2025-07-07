@@ -283,14 +283,16 @@ class DeckMasterApp(QMainWindow):
 
             async with conn.cursor() as cur:
                 await cur.execute("""
-                    SELECT label, pos_x, pos_y, color_bg, color_fg, action, image_path
-                    FROM buttons 
-                    WHERE page = %s
-                """, (page,))
+                    SELECT label, pos_x, pos_y, color_bg, color_fg, action, image_path, page
+                    FROM buttons
+                """)
                 result = await cur.fetchall()
-
-            conn.close()
-            return result
+                filtered = []
+                for row in result:
+                    pages = row[-1].split(",")
+                    if str(page) in [p.strip() for p in pages]:
+                        filtered.append(row[:-1])
+                return filtered
 
         except Exception as e:
             print(f"Database error: {e}")
