@@ -115,7 +115,6 @@ Each layout demonstrates how customizable the interface is.
       `value` text NOT NULL
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-   
    ALTER TABLE `pages`
     ADD PRIMARY KEY (`id`),
     ADD UNIQUE KEY `page_number` (`page_number`);
@@ -243,6 +242,9 @@ The application uses two main tables:
 - `buttons`: Individual button definitions with actions
 - `settings`: Defines system-wide configuration options
 
+<img src="https://github.com/user-attachments/assets/f74b1c16-0e15-41c7-9714-2e97a4d9937a" width="600" />
+
+
 ### Action System
 
 Actions follow the format `command:parameter` and are handled by registered functions in the `actions` dictionary.
@@ -256,6 +258,8 @@ The application includes extensive logging. Check console output for:
 - Web browser integration issues
 
 On-screen errors *may* also be displayed within the renderer.
+
+<img src="https://github.com/user-attachments/assets/5989cddd-6c36-4ec9-af60-1339a0b661f4" width="600" />
 
 ## Acknowledgments
 
