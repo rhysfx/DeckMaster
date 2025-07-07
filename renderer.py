@@ -9,7 +9,7 @@ from typing import List, Tuple, Optional, Dict
 import aiomysql
 import pyautogui
 from dotenv import load_dotenv
-from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QApplication
+from PySide6.QtWidgets import QMainWindow, QWidget, QPushButton, QApplication, QLabel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtGui import QPixmap, QKeySequence, QShortcut, QCursor
 from PySide6.QtCore import Qt, QTimer, QUrl
@@ -19,22 +19,26 @@ from actions import load_actions, action_handlers
 # Load environment variables
 load_dotenv()
 
-async def load_settings():
-    conn = await aiomysql.connect(
-        host=os.getenv('DB_HOST'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASS'),
-        db=os.getenv('DB_NAME')
-    )
-    async with conn.cursor() as cur:
-        await cur.execute("SELECT `key`, `value` FROM settings")
-        rows = await cur.fetchall()
-        settings = {k: v for k, v in rows}
-    conn.close()
-    return settings
+async def load_settings(show_error=None, parent=None):
+    try:
+        conn = await aiomysql.connect(
+            host=os.getenv('DB_HOST'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASS'),
+            db=os.getenv('DB_NAME')
+        )
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT `key`, `value` FROM settings")
+            rows = await cur.fetchall()
+            settings = {k: v for k, v in rows}
+        conn.close()
+        return settings
+    except Exception as e:
+        if show_error:
+            show_error(parent, f"Database connection failed: {e}")
+        return {}
 
 def settings_get(settings, key, fallback):
-    # Try to convert to int if fallback is int, else return as string
     val = settings.get(key, fallback)
     if isinstance(fallback, int):
         try:
@@ -55,15 +59,46 @@ class DeckMasterApp(QMainWindow):
         self.current_page_data = None
         self.last_buttons_hash = None
         self.last_page_hash = None
-        self.settings = asyncio.run(load_settings())  # Synchronously load settings at startup
+
+        # Synchronously load settings at startup, show error if DB fails
+        self.settings = asyncio.run(load_settings(self.show_error_feedback, self))
 
         # Disable PyAutoGUI failsafe
         pyautogui.FAILSAFE = False
 
-        # Load action handlers
         self._load_action_handlers()
-        # Setup UI
         self._setup_ui()
+
+    def _setup_error_banner(self):
+        self.error_banner = QLabel(self)
+        self.error_banner.setGeometry(0, 0, self.width(), 60)
+        self.error_banner.setStyleSheet(
+            "background-color: #ff3333; color: white; font-size: 28px; font-weight: bold; border-bottom: 4px solid #b20000;"
+        )
+        self.error_banner.setAlignment(Qt.AlignCenter)
+        self.error_banner.hide()
+        self.error_banner.raise_()
+
+    def resizeEvent(self, event):
+        if hasattr(self, "error_banner"):
+            self.error_banner.setGeometry(0, 0, self.width(), 60)
+        if self.web_container and self.web_browser:
+            width = self.width()
+            self.web_container.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
+            self.web_browser.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
+        super().resizeEvent(event)
+
+    def show_error_feedback(self, widget, message):
+        """Display a prominent red error banner at the top of the screen."""
+        if hasattr(self, "error_banner"):
+            self.error_banner.setText(message)
+            self.error_banner.show()
+            self.error_banner.raise_()
+            QTimer.singleShot(settings_get(self.settings, 'ERROR_BANNER_TIMEOUT', 5000), self.error_banner.hide)
+        else:
+            from PySide6.QtWidgets import QToolTip
+            QToolTip.showText(self.mapToGlobal(self.rect().center()), message, self)
+            QTimer.singleShot(settings_get(self.settings, 'ERROR_BANNER_TIMEOUT', 5000), QToolTip.hideText)
 
     def _load_action_handlers(self) -> None:
         try:
@@ -72,6 +107,7 @@ class DeckMasterApp(QMainWindow):
             print(f"Available action handlers: {list(action_handlers.keys())}")
         except Exception as e:
             print(f"Error loading actions: {e}")
+            self.show_error_feedback(self, f"Error loading actions: {e}")
 
     def execute_action(self, action: str) -> None:
         if not action:
@@ -82,6 +118,7 @@ class DeckMasterApp(QMainWindow):
         for act in actions:
             if ':' not in act:
                 print(f"Invalid action format: {act}")
+                self.show_error_feedback(self, f"Invalid action format: {act}")
                 continue
             command, param = act.split(':', 1)
             handler = action_handlers.get(command)
@@ -95,8 +132,10 @@ class DeckMasterApp(QMainWindow):
                         handler(param)
                 except Exception as e:
                     print(f"Error executing action {command}: {e}")
+                    self.show_error_feedback(self, f"Error executing action {command}: {e}")
             else:
                 print(f"No handler for action '{command}'")
+                self.show_error_feedback(self, f"No handler for action '{command}'")
 
     def _setup_ui(self) -> None:
         self.setWindowTitle("DeckMaster Control Panel")
@@ -109,6 +148,7 @@ class DeckMasterApp(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
+        self._setup_error_banner()
         self._setup_web_browser()
         self._setup_keyboard_shortcuts()
         self.add_navigation_buttons()
@@ -116,13 +156,6 @@ class DeckMasterApp(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self._asyncio_fetch_and_update)
         self.timer.start(settings_get(self.settings, 'UPDATE_INTERVAL', 500))
-
-    def resizeEvent(self, event):
-        if self.web_container and self.web_browser:
-            width = self.width()
-            self.web_container.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
-            self.web_browser.setGeometry(0, 0, width, settings_get(self.settings, 'WEB_HEIGHT', 300))
-        super().resizeEvent(event)
 
     def _setup_web_browser(self) -> None:
         try:
@@ -145,6 +178,7 @@ class DeckMasterApp(QMainWindow):
             print(f"Error setting up web browser: {e}")
             self.web_browser = None
             self.web_container = None
+            self.show_error_feedback(self, f"Error setting up web browser: {e}")
 
     def _update_webpage_display(self, page_data: Optional[Dict]) -> None:
         if not self.web_browser or not self.web_container:
@@ -163,12 +197,14 @@ class DeckMasterApp(QMainWindow):
                         print(f"Loaded webpage: {new_url}")
                     except Exception as e:
                         print(f"Error loading webpage {new_url}: {e}")
+                        self.show_error_feedback(self, f"Error loading webpage {new_url}: {e}")
             else:
                 if self.web_container.isVisible():
                     self.web_container.hide()
                     print("Webpage hidden for current page")
         except Exception as e:
             print(f"Error in webpage display: {e}")
+            self.show_error_feedback(self, f"Error in webpage display: {e}")
 
     def _create_button_click_handler(self, label: str, action: Optional[str]):
         def on_button_click():
@@ -197,9 +233,10 @@ class DeckMasterApp(QMainWindow):
                 return QPixmap(image_path)
         except Exception as e:
             print(f"Failed to load image '{image_path}': {e}")
+            self.show_error_feedback(self, f"Failed to load image '{image_path}': {e}")
         return None
 
-    def create_button(self, label: str, x: int, y: int, bg: str, fg: str, 
+    def create_button(self, label: str, x: int, y: int, bg: str, fg: str,
                      action: Optional[str] = None, image_path: Optional[str] = None) -> QPushButton:
         button = QPushButton(self.central_widget)
         click_handler = self._create_button_click_handler(label, action)
@@ -233,7 +270,7 @@ class DeckMasterApp(QMainWindow):
             button_height
         )
         return button
-    
+
     async def fetch_page_data(self, page: int = 1) -> Optional[Dict]:
         """
         Fetch page configuration from database.
@@ -263,8 +300,9 @@ class DeckMasterApp(QMainWindow):
 
         except Exception as e:
             print(f"Database error fetching page data: {e}")
+            self.show_error_feedback(self, f"Database error fetching page data: {e}")
             return None
-    
+
     async def fetch_buttons(self, page: int = 1) -> List[Tuple]:
         """
         Fetch button data from database.
@@ -296,47 +334,27 @@ class DeckMasterApp(QMainWindow):
 
         except Exception as e:
             print(f"Database error: {e}")
+            self.show_error_feedback(self, f"Database error fetching buttons: {e}")
             return []
-    
+
     def _hash_buttons_data(self, buttons_data: List[Tuple]) -> str:
-        """
-        Generate hash of button data for change detection.
-        Args:
-            buttons_data: List of button data tuples
-        Returns:
-            MD5 hash string
-        """
         serialized = json.dumps(buttons_data, sort_keys=True)
         return hashlib.md5(serialized.encode('utf-8')).hexdigest()
-    
+
     def _hash_page_data(self, page_data: Optional[Dict]) -> str:
-        """
-        Generate hash of page data for change detection.
-        Args:
-            page_data: Page data dictionary
-        Returns:
-            MD5 hash string
-        """
         serialized = json.dumps(page_data or {}, sort_keys=True, default=str)
         return hashlib.md5(serialized.encode('utf-8')).hexdigest()
-    
+
     def update_buttons_if_changed(self, buttons_data: List[Tuple]) -> None:
-        """
-        Update buttons if data has changed.
-        Args:
-            buttons_data: List of button data tuples
-        """
         new_hash = self._hash_buttons_data(buttons_data)
-        
+
         if new_hash != self.last_buttons_hash:
             self.last_buttons_hash = new_hash
-            
-            # Remove old buttons
+
             for btn in self.created_buttons:
                 btn.deleteLater()
             self.created_buttons.clear()
-            
-            # Create new buttons
+
             for button_data in buttons_data:
                 btn = self._create_button_from_data(button_data)
                 if btn:
@@ -344,44 +362,25 @@ class DeckMasterApp(QMainWindow):
                     btn.show()
 
     def update_page_if_changed(self, page_data: Optional[Dict]) -> None:
-        """
-        Update page configuration if data has changed.
-        Args:
-            page_data: Page data dictionary
-        """
         new_hash = self._hash_page_data(page_data)
-        
+
         if new_hash != self.last_page_hash:
             self.last_page_hash = new_hash
             self.current_page_data = page_data
             self._update_page_ui(page_data)
-    
+
     def _update_page_ui(self, page_data: Optional[Dict]) -> None:
-        """
-        Update page UI elements.
-        Args:
-            page_data: Page data dictionary
-        """
         try:
-            # Update webpage display
             self._update_webpage_display(page_data)
-            
-            # Update background color if specified
             if page_data and page_data.get('background_color'):
                 self.setStyleSheet(f"QMainWindow {{ background-color: {page_data['background_color']}; }}")
             else:
                 self.setStyleSheet(f"QMainWindow {{ background-color: {self.settings.get('BG_COLOR', '#1e1e1e')}; }}")
         except Exception as e:
             print(f"Error updating page UI: {e}")
-    
+            self.show_error_feedback(self, f"Error updating page UI: {e}")
+
     def _create_button_from_data(self, button_data: Tuple) -> Optional[QPushButton]:
-        """
-        Create button from database row data.
-        Args:
-            button_data: Tuple containing button data
-        Returns:
-            Created button or None
-        """
         if len(button_data) >= 7:
             label, x, y, bg, fg, action, image_path = button_data
             return self.create_button(label, x, y, bg, fg, action, image_path)
@@ -393,10 +392,10 @@ class DeckMasterApp(QMainWindow):
             return self.create_button(label, x, y, bg, fg)
         else:
             print(f"Invalid button data: {button_data}")
+            self.show_error_feedback(self, f"Invalid button data: {button_data}")
             return None
-    
+
     def _create_navigation_handlers(self):
-        """Create navigation button click handlers."""
         def next_page():
             self.current_page += 1
             self._asyncio_fetch_and_update()
@@ -404,7 +403,7 @@ class DeckMasterApp(QMainWindow):
                 int(self.settings.get('CURSOR_PARK_X', 1900)),
                 int(self.settings.get('CURSOR_PARK_Y', 1060))
             )
-        
+
         def previous_page():
             if self.current_page > 1:
                 self.current_page -= 1
@@ -413,27 +412,26 @@ class DeckMasterApp(QMainWindow):
                     int(self.settings.get('CURSOR_PARK_X', 1900)),
                     int(self.settings.get('CURSOR_PARK_Y', 1060))
                 )
-        
+
         return previous_page, next_page
-    
+
     def add_navigation_buttons(self) -> None:
-        """Add navigation buttons to the interface."""
         try:
             arrow_left = QPixmap("assets/arrow_left.png")
             arrow_right = QPixmap("assets/arrow_right.png")
         except Exception as e:
             print(f"Error loading arrow images: {e}")
+            self.show_error_feedback(self, f"Error loading arrow images: {e}")
             return
-        
+
         previous_page, next_page = self._create_navigation_handlers()
-        
-        # Left arrow button
+
         left_button = QPushButton(self.central_widget)
         left_button.setIcon(arrow_left)
         left_button.setIconSize(
             arrow_left.size().scaled(
-                int(self.settings.get('BUTTON_WIDTH', 121)), 
-                int(self.settings.get('BUTTON_HEIGHT', 128)), 
+                int(self.settings.get('BUTTON_WIDTH', 121)),
+                int(self.settings.get('BUTTON_HEIGHT', 128)),
                 Qt.KeepAspectRatio
             )
         )
@@ -454,14 +452,13 @@ class DeckMasterApp(QMainWindow):
         )
         left_button.clicked.connect(previous_page)
         left_button.show()
-        
-        # Right arrow button
+
         right_button = QPushButton(self.central_widget)
         right_button.setIcon(arrow_right)
         right_button.setIconSize(
             arrow_right.size().scaled(
-                int(self.settings.get('BUTTON_WIDTH', 121)), 
-                int(self.settings.get('BUTTON_HEIGHT', 128)), 
+                int(self.settings.get('BUTTON_WIDTH', 121)),
+                int(self.settings.get('BUTTON_HEIGHT', 128)),
                 Qt.KeepAspectRatio
             )
         )
@@ -482,12 +479,8 @@ class DeckMasterApp(QMainWindow):
         )
         right_button.clicked.connect(next_page)
         right_button.show()
-    
+
     def _asyncio_fetch_and_update(self) -> None:
-        """
-        Fetch page and button data from database and update UI.
-        Called periodically for live updates.
-        """
         async def fetch_task():
             try:
                 page_data = await self.fetch_page_data(self.current_page)
@@ -495,38 +488,34 @@ class DeckMasterApp(QMainWindow):
                 return page_data, buttons_data
             except Exception as e:
                 print(f"Error in fetch_task: {e}")
+                self.show_error_feedback(self, f"Error in fetch_task: {e}")
                 return None, []
-        
+
         try:
             if self.isVisible():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 page_data, buttons_data = loop.run_until_complete(fetch_task())
                 loop.close()
-                
-                # Update page configuration
+
                 if page_data is not None:
                     self.update_page_if_changed(page_data)
-                
-                # Update buttons
                 if buttons_data:
                     self.update_buttons_if_changed(buttons_data)
-            
+
         except Exception as e:
             print(f"Error in _asyncio_fetch_and_update: {e}")
-    
+            self.show_error_feedback(self, f"Error in _asyncio_fetch_and_update: {e}")
+
     def _setup_keyboard_shortcuts(self) -> None:
         """Setup keyboard shortcuts."""
-        # Escape to exit fullscreen
         esc_shortcut = QShortcut(QKeySequence("Escape"), self)
         esc_shortcut.activated.connect(self.showNormal)
-        
-        # Q or q to quit
         q_shortcut = QShortcut(QKeySequence("q"), self)
         q_shortcut.activated.connect(self.close)
         Q_shortcut = QShortcut(QKeySequence("Q"), self)
         Q_shortcut.activated.connect(self.close)
-    
+
     def run(self) -> None:
         """Run the application."""
         self.show()
