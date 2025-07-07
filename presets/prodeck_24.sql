@@ -17,7 +17,7 @@ CREATE TABLE `buttons` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 INSERT INTO `buttons` (`id`, `label`, `pos_x`, `pos_y`, `color_bg`, `color_fg`, `action`, `page`, `image_path`) VALUES
--- Page 1
+-- Page 1 and Page 2 (the duplicate buttons may seem redundant, but they're necessary when simulating a two-page display with web page - without the second set, it may crashout ever so slightly as the yutes say)
 (1, 'C1', -32, 319, '#2d2d30', 'white', NULL, 1, NULL),
 (2, 'C2', 138, 317, '#2d2d30', 'white', NULL, 1, NULL),
 (3, 'C3', 305, 316, '#2d2d30', 'white', NULL, 1, NULL),
@@ -39,8 +39,7 @@ INSERT INTO `buttons` (`id`, `label`, `pos_x`, `pos_y`, `color_bg`, `color_fg`, 
 (19, 'E3', 305, 662, '#2d2d30', 'white', NULL, 1, NULL),
 (20, 'E4', 475, 662, '#2d2d30', 'white', NULL, 1, NULL),
 (21, 'E5', 645, 662, '#2d2d30', 'white', NULL, 1, NULL),
-(22, 'E6', 815, 662, '#2d2d30', 'white', NULL, 1, NULL);
--- Page 2 (the duplicate buttons may seem redundant, but they're necessary when simulating a two-page display with web page - without the second set, it may crashout ever so slightly as the yutes say)
+(22, 'E6', 815, 662, '#2d2d30', 'white', NULL, 1, NULL),
 (23, 'C1', -32, 319, '#2d2d30', 'white', NULL, 2, NULL),
 (24, 'C2', 138, 317, '#2d2d30', 'white', NULL, 2, NULL),
 (25, 'C3', 305, 316, '#2d2d30', 'white', NULL, 2, NULL),
