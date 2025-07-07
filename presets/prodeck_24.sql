@@ -74,6 +74,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ('OFFSET_BUTTON_V', '7'),
 ('OFFSET_X', '20'),
 ('UPDATE_INTERVAL', '500'),
+('ERROR_BANNER_TIMEOUT', '5000'),
 ('WEB_HEIGHT', '300'),
 ('WEB_MARGIN_TOP', '0');
 
