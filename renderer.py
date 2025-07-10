@@ -89,7 +89,6 @@ class DeckMasterApp(QMainWindow):
         super().resizeEvent(event)
 
     def show_error_feedback(self, widget, message):
-        """Display a prominent red error banner at the top of the screen."""
         if hasattr(self, "error_banner"):
             self.error_banner.setText(message)
             self.error_banner.show()
@@ -272,13 +271,6 @@ class DeckMasterApp(QMainWindow):
         return button
 
     async def fetch_page_data(self, page: int = 1) -> Optional[Dict]:
-        """
-        Fetch page configuration from database.
-        Args:
-            page: Page number to fetch
-        Returns:
-            Dictionary with page data or None
-        """
         try:
             conn = await aiomysql.connect(
                 host=os.getenv('DB_HOST'),
@@ -304,13 +296,6 @@ class DeckMasterApp(QMainWindow):
             return None
 
     async def fetch_buttons(self, page: int = 1) -> List[Tuple]:
-        """
-        Fetch button data from database.
-        Args:
-            page: Page number to fetch
-        Returns:
-            List of button data tuples
-        """
         try:
             conn = await aiomysql.connect(
                 host=os.getenv('DB_HOST'),
@@ -508,7 +493,6 @@ class DeckMasterApp(QMainWindow):
             self.show_error_feedback(self, f"Error in _asyncio_fetch_and_update: {e}")
 
     def _setup_keyboard_shortcuts(self) -> None:
-        """Setup keyboard shortcuts."""
         esc_shortcut = QShortcut(QKeySequence("Escape"), self)
         esc_shortcut.activated.connect(self.showNormal)
         q_shortcut = QShortcut(QKeySequence("q"), self)
@@ -517,12 +501,10 @@ class DeckMasterApp(QMainWindow):
         Q_shortcut.activated.connect(self.close)
 
     def run(self) -> None:
-        """Run the application."""
         self.show()
         QApplication.instance().exec()
 
 def main():
-    """Main entry point."""
     app = QApplication([])
     window = DeckMasterApp()
     window.run()
