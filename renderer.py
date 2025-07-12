@@ -115,11 +115,11 @@ class DeckMasterApp(QMainWindow):
 
         actions = [a.strip() for a in action.split('&&') if a.strip()]
         for act in actions:
-            if ':' not in act:
-                print(f"Invalid action format: {act}")
-                self.show_error_feedback(self, f"Invalid action format: {act}")
-                continue
-            command, param = act.split(':', 1)
+            if ':' in act:
+                command, param = act.split(':', 1)
+            else:
+                command, param = act, None
+
             handler = action_handlers.get(command)
             if handler:
                 try:
@@ -127,8 +127,10 @@ class DeckMasterApp(QMainWindow):
                     sig = inspect.signature(handler)
                     if len(sig.parameters) > 1:
                         handler(param, self)
-                    else:
+                    elif len(sig.parameters) == 1:
                         handler(param)
+                    else:
+                        handler()
                 except Exception as e:
                     print(f"Error executing action {command}: {e}")
                     self.show_error_feedback(self, f"Error executing action {command}: {e}")

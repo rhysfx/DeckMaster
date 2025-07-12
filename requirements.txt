@@ -3,3 +3,4 @@ python-dotenv
 pyautogui
 PySide6
 requests
+obs-websocket-py
