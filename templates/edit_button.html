@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head><title>Edit Button</title></head>
+<body>
+  <h1>{% if button %}Edit{% else %}New{% endif %} Button</h1>
+  <form method="post">
+    Label: <input name="label" value="{{ button.label if button else '' }}"><br>
+    X: <input name="pos_x" value="{{ button.pos_x if button else '' }}"><br>
+    Y: <input name="pos_y" value="{{ button.pos_y if button else '' }}"><br>
+    BG Color: <input name="color_bg" value="{{ button.color_bg if button else '' }}"><br>
+    FG Color: <input name="color_fg" value="{{ button.color_fg if button else '' }}"><br>
+    Action: <input name="action" value="{{ button.action if button else '' }}"><br>
+    Image Path: <input name="image_path" value="{{ button.image_path if button else '' }}"><br>
+    {% if button %}
+      Page(s): <input name="page" value="{{ button.page }}"><br>
+    {% endif %}
+    <button type="submit">Save</button>
+  </form>
+  <a href="{{ url_for('edit_page', page_number=page_number) }}">Back</a>
+</body>
+</html>

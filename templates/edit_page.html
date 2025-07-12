@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head><title>Edit Page</title></head>
+<body>
+  <h1>{% if page %}Edit{% else %}New{% endif %} Page</h1>
+  <form method="post">
+    Number: <input name="page_number" value="{{ page.page_number if page else '' }}" {% if page %}readonly{% endif %}><br>
+    URL: <input name="webpage_url" value="{{ page.webpage_url if page else '' }}"><br>
+    Show Web: <input name="show_webpage" type="checkbox" value="1" {% if page and page.show_webpage %}checked{% endif %}><br>
+    BG Color: <input name="background_color" value="{{ page.background_color if page else '' }}"><br>
+    <button type="submit">Save</button>
+  </form>
+  {% if page %}
+  <h2>Buttons</h2>
+  <a href="{{ url_for('new_button', page_number=page.page_number) }}">Add Button</a>
+  <ul>
+    {% for button in buttons %}
+      <li>
+        {{ button.label }} ({{ button.pos_x }}, {{ button.pos_y }})
+        <a href="{{ url_for('edit_button', button_id=button.id) }}">Edit</a>
+        <a href="{{ url_for('delete_button', button_id=button.id) }}">Delete</a>
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <a href="{{ url_for('index') }}">Back to Pages</a>
+</body>
+</html>
