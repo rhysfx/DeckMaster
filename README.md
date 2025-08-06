@@ -148,7 +148,7 @@ Start the management dashboard to configure buttons and pages:
 python dashboard.py
 ```
 
-The dashboard provides a web interface for managing your control panel configuration - currently in works.
+The dashboard provides a web interface for managing your control panel configuration - currently in works and non-functional at all.
 
 ## Built-in Actions
 
