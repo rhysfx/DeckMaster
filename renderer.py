@@ -4,6 +4,9 @@ import json
 import os
 import tempfile
 import urllib.request
+import ast
+import inspect
+import re
 from typing import List, Tuple, Optional, Dict
 
 import aiomysql
@@ -108,6 +111,17 @@ class DeckMasterApp(QMainWindow):
             print(f"Error loading actions: {e}")
             self.show_error_feedback(self, f"Error loading actions: {e}")
 
+    def smart_split_params(self, param_str):
+        pattern = r'''
+            "[^"]*"          |   # double quoted string
+            '[^']*'          |   # single quoted string
+            \[[^\[\]]*\]     |   # bracketed list (no nested brackets)
+            [^,\s][^,]*          # unquoted token (no comma or whitespace at start)
+        '''
+        
+        matches = re.findall(pattern, param_str, re.VERBOSE)
+        return [m.strip() for m in matches if m.strip()]
+
     def execute_action(self, action: str) -> None:
         if not action:
             print("No action defined")
@@ -116,27 +130,59 @@ class DeckMasterApp(QMainWindow):
         actions = [a.strip() for a in action.split('&&') if a.strip()]
         for act in actions:
             if ':' in act:
-                command, param = act.split(':', 1)
+                command, param_str = act.split(':', 1)
             else:
-                command, param = act, None
+                command, param_str = act, None
 
             handler = action_handlers.get(command)
-            if handler:
-                try:
-                    import inspect
-                    sig = inspect.signature(handler)
-                    if len(sig.parameters) > 1:
-                        handler(param, self)
-                    elif len(sig.parameters) == 1:
-                        handler(param)
-                    else:
-                        handler()
-                except Exception as e:
-                    print(f"Error executing action {command}: {e}")
-                    self.show_error_feedback(self, f"Error executing action {command}: {e}")
-            else:
+            if not handler:
                 print(f"No handler for action '{command}'")
                 self.show_error_feedback(self, f"No handler for action '{command}'")
+                continue
+
+        try:
+            params = []
+            if param_str:
+                param_tokens = self.smart_split_params(param_str)
+                print(f"Param tokens after smart_split_params: {param_tokens}")  # DEBUG
+
+                for token in param_tokens:
+                    token = token.strip()
+                    try:
+                        val = ast.literal_eval(token)
+                    except Exception:
+                        val = token
+                    params.append(val)
+
+            print(f"Final params to pass: {params}")  # DEBUG
+
+            sig = inspect.signature(handler)
+            param_names = list(sig.parameters.keys())
+            num_params = len(param_names)
+            print(f"Handler {command} expects {num_params} params: {param_names}")  # DEBUG
+
+            if num_params == 0:
+                handler()
+            elif num_params == 1:
+                arg = params[0] if params else None
+                # Convert int param to string here
+                if isinstance(arg, int):
+                    arg = str(arg)
+                handler(arg)
+            else:
+                # If multiple params, convert first param to string if needed
+                if params and isinstance(params[0], int):
+                    params[0] = str(params[0])
+                if param_names[-1] in ('app_instance', 'self'):
+                    handler(*params, self)
+                else:
+                    handler(*params)
+
+
+        except Exception as e:
+            print(f"Error executing action {command}: {e}")
+            self.show_error_feedback(self, f"Error executing action {command}: {e}")
+
 
     def _setup_ui(self) -> None:
         self.setWindowTitle("DeckMaster Control Panel")
